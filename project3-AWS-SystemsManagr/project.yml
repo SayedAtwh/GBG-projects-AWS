@@ -1,0 +1,26 @@
+Task 2 — Part 2: Managing EC2 Instances Securely Using AWS Systems Manager
+
+📘 Scenario Description:
+An organization wants to improve the way it manages EC2 instances by eliminating the need for SSH access and key pair management. In this task, the team will use AWS Systems Manager to connect to and manage an EC2 instance securely through the AWS Management Console. This includes using Session Manager for remote access and Run Command to install and configure an Apache web server—without using the CLI or opening port 22.
+
+Scenario Steps:
+
+1. Create an IAM Role for Systems Manager Access
+
+* Set up an IAM role that grants Systems Manager permissions and attach it to your EC2 instance.
+
+2. Launch an EC2 Instance Without an SSH Key Pair
+
+* Create an Amazon Linux 2023 instance with the IAM role attached and ensure the instance is in a public subnet with HTTP access enabled.
+
+3. Access the Instance Using Session Manager
+
+* Use AWS Systems Manager’s Session Manager to establish a remote shell session directly from the AWS Console.
+
+4. Run Commands Using Systems Manager
+
+* Use Run Command to install and start Apache Web Server on the instance.
+
+5. Verify the Web Server
+
+* Access the EC2 instance’s public IP address in a browser and confirm the Apache welcome page is displayed.
