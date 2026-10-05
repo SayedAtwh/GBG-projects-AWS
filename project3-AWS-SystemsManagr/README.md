@@ -1,80 +1,87 @@
-# Securely Managing EC2 Instances with AWS Systems Manager
+<div align="center">
 
-This hands-on project demonstrates how to manage an **Amazon EC2** instance using **AWS Systems Manager (SSM)** without creating an SSH key pair or opening SSH port 22. **Session Manager** provides browser-based shell access, while **Run Command** installs and configures a web server. The website is then verified over HTTP.
+# Secure EC2 Management with AWS Systems Manager
 
-> **Screenshot note:** The existing screenshots document instance creation and access, but the website screenshot displays **Nginx**, and the terminal screenshot includes Nginx-related commands. They do not prove that **Apache** is running. The instructions below use Apache as required by the scenario. To make the screenshots match the completed Apache setup, run the Run Command instructions and capture a new website screenshot after verifying it.
+### Connect to and manage an Amazon Linux instance without SSH keys or port 22
+
+**EC2** · **IAM** · **AWS Systems Manager** · **Session Manager** · **Run Command**
+
+</div>
+
+---
 
 ## Project Overview
 
-Instead of connecting to the server over SSH and managing keys, the EC2 instance receives an **IAM instance profile** that allows the Systems Manager Agent to communicate with the service. An operator can then open a secure session from the AWS Console and send commands using Run Command. SSH remains closed, while HTTP is enabled to serve the Apache page.
+This project demonstrates a more secure way to manage an **Amazon EC2** instance using **AWS Systems Manager (SSM)**. Instead of creating an SSH key pair and opening port **22**, an operator connects through **Session Manager** and runs administrative commands through **Run Command**.
+
+The walkthrough launches an **Amazon Linux 2023** instance, attaches an IAM role, installs **Apache**, and verifies the web page over HTTP.
+
+> [!IMPORTANT]
+> The screenshots currently in this repository show **Nginx**, not Apache. The terminal screenshot also contains Nginx-related commands. The Apache commands below follow the project scenario, but the existing website screenshot does not verify Apache. A new screenshot should be captured after Apache has been installed and checked.
+
+## How It Works
 
 ```mermaid
 flowchart LR
     Operator["Operator<br/>AWS Management Console"] -->|Session Manager / Run Command| SSM["AWS Systems Manager"]
     SSM <-->|Outbound HTTPS 443| Agent["SSM Agent on EC2"]
-    Role["IAM instance role<br/>AmazonSSMManagedInstanceCore"] --> Agent
-    Agent --> EC2["EC2 · Amazon Linux 2023<br/>Apache (httpd)"]
-    Browser["User's browser"] -->|HTTP 80| EC2
+    Role["EC2 instance role<br/>AmazonSSMManagedInstanceCore"] --> Agent
+    Agent --> Instance["Amazon Linux 2023<br/>Apache (httpd)"]
+    Browser["Web browser"] -->|HTTP 80| Instance
 ```
 
-## Project Contents
+The instance role lets the SSM Agent register with Systems Manager. The operator then uses the AWS Console to open a browser-based shell or run commands. Port **22** stays closed; port **80** is used only to display the website.
 
-| File | What the screenshot shows |
-|---|---|
-| [`screenshot/Role-SSM.png`](screenshot/Role-SSM.png) | The IAM role and its attached permission policies |
-| [`screenshot/Create-EC2-withOut-keyper.png`](screenshot/Create-EC2-withOut-keyper.png) | An EC2 instance launched without an SSH key pair |
-| [`screenshot/Session-Manger.png`](screenshot/Session-Manger.png) | A terminal session through Session Manager |
-| [`screenshot/SSM-Start-session.png`](screenshot/SSM-Start-session.png) | The Session Manager sessions page |
-| [`screenshot/EC2-website.png`](screenshot/EC2-website.png) | The website opened using the instance address; the current screenshot shows Nginx |
+## Walkthrough
 
-## Prerequisites
+### 1. Create the EC2 Instance Role
 
-- An AWS account with permission to use EC2, IAM, and Systems Manager.
-- An **Amazon Linux 2023** instance in a network that allows it to reach Systems Manager.
-- A security group that allows inbound HTTP traffic on port **80**.
-- No SSH key pair and no inbound rule for port **22** are required.
+Create an IAM role trusted by **EC2** and attach the AWS-managed policy **AmazonSSMManagedInstanceCore**. Attach this role to the instance when you launch it.
 
-## Implementation Steps
+<p align="center">
+  <img src="screenshot/Role-SSM.png" alt="IAM role and attached Systems Manager policies" width="900">
+</p>
+<p align="center"><em>IAM role configuration shown in the project screenshot.</em></p>
 
-### 1. Create an IAM Role for the Instance
+> [!WARNING]
+> The screenshot shows both `AmazonSSMManagedInstanceCore` and `AmazonSSMFullAccess`. The instance normally needs **AmazonSSMManagedInstanceCore** for Systems Manager connectivity. Avoid attaching the broad `AmazonSSMFullAccess` policy to the instance role unless it is specifically required. Give operators only the permissions they need, separately from the instance role.
 
-1. Open **IAM → Roles → Create role**.
-2. Select **AWS service**, then choose **EC2** as the trusted entity.
-3. Attach the AWS managed policy **AmazonSSMManagedInstanceCore**.
-4. Name and create the role.
-5. When launching the instance, select this role under **Advanced details → IAM instance profile**.
+### 2. Launch an Instance Without an SSH Key Pair
 
-**Least privilege:** The instance generally needs `AmazonSSMManagedInstanceCore` to be managed by Systems Manager. Do not attach `AmazonSSMFullAccess` to the instance just to enable connectivity. This is a broad policy for a user or operator who needs to manage SSM resources; it is not a replacement for the instance role. The role screenshot shows both policies, so review and remove unnecessary permissions before using this setup in a real environment.
+In **EC2 → Launch instances**:
 
-### 2. Launch an EC2 Instance Without an SSH Key Pair
+1. Choose **Amazon Linux 2023**.
+2. Under **Key pair (login)**, choose **Proceed without a key pair**.
+3. Select a subnet and attach the IAM role created above.
+4. Allow inbound **TCP port 80** in the security group so the website can be tested.
+5. Do **not** add an inbound rule for port **22**.
 
-1. Open **EC2 → Instances → Launch instances**.
-2. Choose **Amazon Linux 2023** and an instance type suitable for your test.
-3. Under **Key pair (login)**, select **Proceed without a key pair**.
-4. Choose a public subnet if you want to test the website using a public IPv4 address. Ensure there is a route to the internet, or configure appropriate VPC endpoints for Systems Manager.
-5. Create or select a security group with the following rule:
+For a public-browser test, the instance needs a public IPv4 address and a route that permits internet access. Alternatively, configure the required Systems Manager VPC endpoints.
 
-   | Direction | Protocol | Port | Source | Purpose |
-   |---|---|---:|---|---|
-   | Inbound | TCP | 80 | `0.0.0.0/0` (public testing only) | Serve the website |
+<p align="center">
+  <img src="screenshot/Create-EC2-withOut-keyper.png" alt="EC2 instance details after launch" width="900">
+</p>
+<p align="center"><em>EC2 instance details. The key-pair selection itself is not visible in this screenshot.</em></p>
 
-   Do not add a rule for port 22. For real workloads, restrict the HTTP source or use a load balancer and HTTPS as appropriate.
+### 3. Open a Session Manager Session
 
-6. Under **Advanced details**, attach the IAM role you created, then launch the instance.
-7. Wait until the instance is **Running** and its status checks pass. It should appear as a managed node in Systems Manager; this may take a few minutes.
+In the AWS Console, open **Systems Manager → Session Manager → Start session**, select the managed instance, and start the session. You can also choose **Connect → Session Manager** from the EC2 instance page.
 
-### 3. Connect Using Session Manager
+The instance needs outbound HTTPS access on port **443** to reach Systems Manager. A public IP address alone does not guarantee that this connection is available.
 
-In the AWS Console, open **Systems Manager → Session Manager → Start session**, select the instance, and start the session. Alternatively, select the instance on the EC2 page and choose **Connect → Session Manager**.
+<p align="center">
+  <img src="screenshot/SSM-Start-session.png" alt="Active Session Manager sessions" width="900">
+</p>
+<p align="center"><em>Session Manager session list.</em></p>
 
-The session opens a terminal in your browser without SSH or a key pair. Ensure that the instance can make outbound HTTPS connections to Systems Manager on port **443**. A public IP address alone does not guarantee connectivity if network rules or routes block it.
+<p align="center">
+  <img src="screenshot/Session-Manger.png" alt="Browser-based terminal connected to the EC2 instance" width="900">
+</p>
+<p align="center"><em>Browser-based shell connected to the instance. This capture shows Nginx-related commands, not the Apache setup below.</em></p>
 
-### 4. Install Apache Using Run Command
+### 4. Install Apache with Run Command
 
-1. Open **Systems Manager → Run Command → Run command**.
-2. Select the **AWS-RunShellScript** document.
-3. Under **Targets**, select the managed instance.
-4. Add the following commands, then choose **Run**:
+Open **Systems Manager → Run Command → Run command**, select **AWS-RunShellScript**, target the managed instance, and submit:
 
 ```bash
 sudo dnf install -y httpd
@@ -82,31 +89,46 @@ sudo systemctl enable --now httpd
 printf '%s\n' '<!doctype html><html lang="en"><meta charset="utf-8"><title>EC2 via SSM</title><body><h1>Apache is running successfully</h1><p>This server was configured using AWS Systems Manager.</p></body></html>' | sudo tee /var/www/html/index.html
 ```
 
-5. Open the command details and wait for the execution status to become **Success**. You can review each instance's output in **Command history**.
+Wait for the command status to show **Success**. Review the per-instance output in **Command history** if the command fails.
 
 ### 5. Verify the Website
 
-Copy the instance's **Public IPv4 address** and open it in a browser using `http://`:
+Copy the instance's **Public IPv4 address** and open `http://<PUBLIC-IP>` in a browser. After the Apache commands above succeed, the page should display **Apache is running successfully**.
 
-```text
-http://<PUBLIC-IP>
-```
+<p align="center">
+  <img src="screenshot/EC2-website.png" alt="Website currently shown by the EC2 instance" width="900">
+</p>
+<p align="center"><em>Existing website screenshot. It currently reports that Nginx is running, so it is not evidence of the Apache result.</em></p>
 
-The **Apache is running successfully** page should appear. If it does not, check that the instance is running, the command succeeded, the `httpd` service is active, the security group allows TCP/80, and the instance has a public address and a suitable network route.
+## Configuration at a Glance
+
+| Component | Configuration |
+|---|---|
+| Operating system | Amazon Linux 2023 |
+| Instance access | AWS Systems Manager Session Manager |
+| Remote commands | Systems Manager Run Command |
+| Instance permissions | `AmazonSSMManagedInstanceCore` |
+| SSH key pair | Not used |
+| Inbound SSH | Port 22 remains closed |
+| Web access | HTTP on port 80 |
+| Web server in the written procedure | Apache (`httpd`) |
 
 ## Troubleshooting
 
-- **The instance does not appear in Session Manager:** Verify that the correct IAM role is attached, check the SSM Agent status, and confirm outbound HTTPS access on port 443 or the required VPC endpoints.
-- **Run Command does not target the instance:** Confirm that it appears as a **Managed node** and that your AWS user has permission to run the command.
-- **The website does not load:** Check the command execution status, the `httpd` service, the inbound port 80 rule, the public address, and the internet route.
-- **The Nginx page appears instead of Apache:** Check the `httpd` service and `/var/www/html/index.html`. Make sure another service is not still using port 80, then update the screenshot after verification.
+| Symptom | What to check |
+|---|---|
+| Instance is missing from Session Manager | Confirm the EC2 role is attached, the SSM Agent is running, and outbound HTTPS on port 443 or the required VPC endpoints are available. |
+| Run Command cannot reach the instance | Confirm it appears as a **Managed node** and that the operator can run commands. |
+| Website does not load | Check the Run Command result, `httpd` service status, inbound TCP/80, public IP, and network route. |
+| Nginx appears instead of Apache | Check that `httpd` is running and that `/var/www/html/index.html` contains the expected page. Replace the website screenshot after verification. |
 
 ## Security and Cleanup
 
-- Keep port **22** closed and use Session Manager for administrative access.
-- Do not grant broad administrative permissions to the instance role. Separate operator permissions from instance permissions and follow least privilege.
-- Expose HTTP publicly only when needed for testing. Stop or terminate the instance when finished to avoid unexpected charges.
+- Keep inbound port **22** closed and use Session Manager for administrative access.
+- Follow least privilege: separate the permissions of the EC2 instance role from those of the operator.
+- Expose HTTP publicly only for testing; restrict the source or use HTTPS for real workloads.
+- Stop or terminate the instance when it is no longer needed to avoid ongoing charges.
 
-## Expected Outcome
+## Expected Result
 
-Manage the EC2 instance from the AWS Console using Session Manager and Run Command, without an SSH key pair or an open port 22, and serve an Apache webpage over HTTP.
+The EC2 instance is managed from the AWS Console using Session Manager and Run Command, with no SSH key pair and no open SSH port. Apache serves a test page over HTTP.
