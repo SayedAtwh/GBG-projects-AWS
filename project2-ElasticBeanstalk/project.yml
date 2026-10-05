@@ -1,0 +1,34 @@
+Task 2 — Part 1: Deploying a Scalable Web Application Using AWS Elastic Beanstalk
+
+📘 Scenario Description:
+A startup company aims to simplify application deployment and management while ensuring scalability and reliability. To achieve this, the team will leverage AWS Elastic Beanstalk, which abstracts the complexity of infrastructure provisioning, application deployment, and auto scaling.
+
+Scenario Steps:
+
+1. Create a Web Application Package
+
+* Develop a simple web application using Node.js, Python (Flask), or PHP.
+* Package the code and dependencies in a .zip file as per AWS Beanstalk requirements.
+
+2. Deploy the Application Using Elastic Beanstalk Console
+
+* Create a new Elastic Beanstalk environment (Web server environment).
+* Choose a platform (e.g., Node.js, Python, PHP).
+* Upload the application package and deploy.
+
+3. Enable Auto Scaling
+
+* Use the Elastic Beanstalk configuration options to enable automatic scaling based on CPU or request count.
+* Configure minimum and maximum instance counts.
+
+4. Attach Load Balancer
+
+* Elastic Beanstalk automatically creates and configures an Application Load Balancer (ALB).
+* Validate health checks and traffic routing.
+
+Scenario Testing:
+
+Run Application Functionality Tests
+
+* Access the app via the Elastic Beanstalk environment URL (e.g., myapp.us-east-1.elasticbeanstalk.com).
+* Perform basic functional testing.
